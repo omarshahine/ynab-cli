@@ -83,7 +83,7 @@ def test_list_unused(runner: CliRunner, container: Container, empty_uuid: UUID) 
     assert result.exit_code == 0
     use_case.assert_called_once_with(
         Settings(ynab=YnabSettings(access_token="test_token", budget_id="test_budget")),
-        {"dry_run": False, "prefix_unused": False},
+        {"dry_run": False, "prefix_unused": False, "start_from": None, "auto_resume": False, "auto_wait": False},
     )
 
 

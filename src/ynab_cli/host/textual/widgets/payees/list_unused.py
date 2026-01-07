@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any, cast
 
 from textual.app import ComposeResult
-from textual.widgets import Checkbox, DataTable, Log, ProgressBar
+from textual.widgets import Checkbox, DataTable, Input, Log, ProgressBar
 from typing_extensions import override
 
 from ynab_cli.adapters.textual.io import TextualIO
@@ -20,14 +20,25 @@ class ListUnusedParamsDialogForm(DialogForm[use_cases.ListUnusedParams]):
 
     @override
     def compose(self) -> ComposeResult:
-        yield Checkbox("Dry Run", self._params["dry_run"], id="dry_run")
-        yield Checkbox("Prefix Unused Payees", self._params["prefix_unused"], id="prefix_unused")
+        yield Checkbox("Dry Run", self._params.get("dry_run", False), id="dry_run")
+        yield Checkbox("Prefix Unused Payees", self._params.get("prefix_unused", False), id="prefix_unused")
+        yield Input(
+            placeholder="Start from letter or payee name (e.g., 'B' or 'Bo Concept')",
+            value=self._params.get("start_from") or "",
+            id="start_from",
+        )
+        yield Checkbox("Auto Resume from saved progress", self._params.get("auto_resume", False), id="auto_resume")
+        yield Checkbox("Auto Wait when rate limited", self._params.get("auto_wait", False), id="auto_wait")
 
     @override
     async def get_result(self) -> use_cases.ListUnusedParams:
+        start_from_value = self.query_one("#start_from", Input).value
         return {
             "dry_run": self.query_one("#dry_run", Checkbox).value,
             "prefix_unused": self.query_one("#prefix_unused", Checkbox).value,
+            "start_from": start_from_value if start_from_value else None,
+            "auto_resume": self.query_one("#auto_resume", Checkbox).value,
+            "auto_wait": self.query_one("#auto_wait", Checkbox).value,
         }
 
 
@@ -37,6 +48,9 @@ class ListUnusedCommand(CommandWidget):
         self._params: use_cases.ListUnusedParams = {
             "dry_run": False,
             "prefix_unused": False,
+            "start_from": None,
+            "auto_resume": False,
+            "auto_wait": False,
         }
 
     def on_mount(self) -> None:

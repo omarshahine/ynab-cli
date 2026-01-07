@@ -78,10 +78,21 @@ class ListUnusedCommand:
         self._progress_table.table.add_column("Payee Id")
         self._progress_table.table.add_column("Payee Name")
 
-    async def __call__(self, settings: Settings, dry_run: bool, prefix_unused: bool) -> None:
+    async def __call__(
+        self,
+        settings: Settings,
+        dry_run: bool,
+        prefix_unused: bool,
+        start_from: str | None,
+        auto_resume: bool,
+        auto_wait: bool,
+    ) -> None:
         params: use_cases.ListUnusedParams = {
             "dry_run": dry_run,
             "prefix_unused": prefix_unused,
+            "start_from": start_from,
+            "auto_resume": auto_resume,
+            "auto_wait": auto_wait,
         }
 
         console = None
@@ -169,16 +180,50 @@ def list_duplicates(ctx: click.Context) -> None:
 
 
 @containerize
-async def _list_unused(container: Container, dry_run: bool, prefix_unused: bool) -> None:
-    await container[ListUnusedCommand](container[Settings], dry_run, prefix_unused)
+async def _list_unused(
+    container: Container, dry_run: bool, prefix_unused: bool, start_from: str | None, auto_resume: bool, auto_wait: bool
+) -> None:
+    await container[ListUnusedCommand](container[Settings], dry_run, prefix_unused, start_from, auto_resume, auto_wait)
 
 
 @click.command()
 @click.option("--dry-run", is_flag=True, default=False, help="Run without making any changes.")
 @click.option("--prefix-unused", is_flag=True, default=False, help="Add a prefix to the unused payee names.")
+@click.option(
+    "--start-from",
+    default=None,
+    help="Start from a letter (e.g., 'B') or payee name (e.g., 'Bo Concept'). Useful for resuming after rate limiting.",
+)
+@click.option(
+    "--auto-resume",
+    is_flag=True,
+    default=False,
+    help="Automatically resume from the last saved progress.",
+)
+@click.option(
+    "--auto-wait",
+    is_flag=True,
+    default=False,
+    help="Automatically wait when rate limited instead of stopping. Can take up to an hour.",
+)
 @click.pass_context
-def list_unused(ctx: click.Context, dry_run: bool, prefix_unused: bool) -> None:
-    """List unused payees in the YNAB budget."""
+def list_unused(
+    ctx: click.Context, dry_run: bool, prefix_unused: bool, start_from: str | None, auto_resume: bool, auto_wait: bool
+) -> None:
+    """List unused payees in the YNAB budget.
+
+    This command checks each payee for transactions to identify unused ones.
+    Due to YNAB's rate limit of 200 requests/hour, this can be a long-running operation.
+
+    Use --start-from to begin from a specific letter or payee name, which is useful
+    for resuming after being rate limited.
+
+    Use --auto-resume to automatically continue from where you left off after
+    a previous run was interrupted by rate limiting.
+
+    Use --auto-wait to have the CLI automatically pause when rate limited and
+    continue when the limit resets (can take up to an hour).
+    """
 
     ctx.ensure_object(dict)
     settings: Settings = ctx.obj.get(CONTEXT_KEY_SETTINGS, Settings())
@@ -189,6 +234,9 @@ def list_unused(ctx: click.Context, dry_run: bool, prefix_unused: bool) -> None:
         settings,
         dry_run,
         prefix_unused,
+        start_from,
+        auto_resume,
+        auto_wait,
         backend_options={"use_uvloop": True},
     )
 
