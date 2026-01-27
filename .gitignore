@@ -10,3 +10,4 @@ __pycache__/
 .vscode/
 dist/
 site/
+node_modules/
