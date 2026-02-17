@@ -10,4 +10,5 @@ __pycache__/
 .vscode/
 dist/
 site/
+.DS_Store
 node_modules/
