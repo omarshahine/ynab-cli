@@ -12,3 +12,5 @@ dist/
 site/
 .DS_Store
 node_modules/
+# Clawpatch local review state
+.clawpatch/
